@@ -459,6 +459,26 @@ function importBackup(file) {
   reader.readAsText(file);
 }
 
+function useWhatsappDestination() {
+  const phone = $("#whatsappPhone").value.replace(/\D/g, "");
+  const message = $("#whatsappMessage").value.trim();
+
+  if (phone.length < 10) {
+    toast("Informe o telefone com DDI e DDD.");
+    return;
+  }
+
+  const url = new URL(`https://wa.me/${phone}`);
+  if (message) url.searchParams.set("text", message);
+
+  $("#destinationInput").value = url.toString();
+  const source = document.querySelector("[name='source']");
+  const medium = document.querySelector("[name='medium']");
+  source.value = "WhatsApp";
+  medium.value = "whatsapp";
+  toast("Destino WhatsApp pronto para rastrear.");
+}
+
 async function shortenSelectedLink() {
   const link = getSelected();
   if (!link) {
@@ -547,6 +567,7 @@ function bindEvents() {
   $("#copyUrlBtn").addEventListener("click", () => copy($("#generatedUrl").value));
   $("#copyShortBtn").addEventListener("click", () => copy($("#shortUrl").value));
   $("#shortenBtn").addEventListener("click", shortenSelectedLink);
+  $("#useWhatsappBtn").addEventListener("click", useWhatsappDestination);
   $("#exportCsvBtn").addEventListener("click", exportCsv);
   $("#exportBackupBtn").addEventListener("click", exportBackup);
   $("#importBackupBtn").addEventListener("click", () => $("#backupFileInput").click());

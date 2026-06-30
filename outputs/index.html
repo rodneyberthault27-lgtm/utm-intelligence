@@ -104,8 +104,26 @@
 
             <label>
               URL de destino
-              <input name="destination" type="url" placeholder="https://suaempresa.com/produto" required />
+              <input id="destinationInput" name="destination" type="url" placeholder="https://suaempresa.com/produto" required />
             </label>
+
+            <div class="whatsapp-builder">
+              <div class="builder-head">
+                <strong>Destino WhatsApp</strong>
+                <span>Monte um link wa.me limpo para rastrear cliques antes de abrir a conversa.</span>
+              </div>
+              <div class="whatsapp-grid">
+                <label>
+                  Número com DDI
+                  <input id="whatsappPhone" inputmode="numeric" placeholder="5511925141848" />
+                </label>
+                <label>
+                  Mensagem inicial
+                  <input id="whatsappMessage" placeholder="Olá, quero saber mais sobre..." />
+                </label>
+                <button id="useWhatsappBtn" class="ghost" type="button">Usar WhatsApp</button>
+              </div>
+            </div>
 
             <div class="form-grid">
               <label>
@@ -250,6 +268,6 @@
 
     <div id="toast" class="toast"></div>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="app.js?v=shortener-3"></script>
+    <script src="app.js?v=whatsapp-1"></script>
   </body>
 </html>

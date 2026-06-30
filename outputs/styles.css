@@ -287,6 +287,32 @@ label {
   gap: 14px;
 }
 
+.whatsapp-builder {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf7;
+}
+
+.builder-head {
+  display: grid;
+  gap: 4px;
+}
+
+.builder-head span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.whatsapp-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.5fr) minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
 .preview-panel {
   align-self: start;
 }
@@ -523,7 +549,8 @@ td {
   .dashboard-grid,
   .report-grid,
   .split,
-  .form-grid {
+  .form-grid,
+  .whatsapp-grid {
     grid-template-columns: 1fr;
   }
 
