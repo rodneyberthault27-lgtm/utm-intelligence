@@ -150,13 +150,14 @@ async function handleIncomingRedirect() {
 
 async function recordGlobalClick(counterKey) {
   const url = `https://api.counterapi.dev/v1/${COUNTER_NAMESPACE}/${counterKey}/up`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2500);
   try {
-    await Promise.race([
-      fetch(url, { cache: "no-store", keepalive: true }),
-      new Promise((resolve) => setTimeout(resolve, 900)),
-    ]);
+    await fetch(url, { cache: "no-store", keepalive: true, signal: controller.signal });
   } catch (error) {
     // Redirect must continue even if the external counter is unavailable.
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -454,30 +455,44 @@ function render() {
 async function syncRemoteClicks() {
   if (!state.links.length) return;
 
+  const syncButton = $("#syncClicksBtn");
+  if (syncButton) {
+    syncButton.disabled = true;
+    syncButton.textContent = "Atualizando...";
+  }
+
   let changed = false;
-  await Promise.all(
-    state.links.map(async (link) => {
-      const key = counterKeyForLink(link);
-      try {
-        const response = await fetch(`https://api.counterapi.dev/v1/${COUNTER_NAMESPACE}/${key}/`, {
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-        const data = await response.json();
-        const remoteClicks = Number(data.count || 0);
-        if (remoteClicks !== Number(link.remoteClicks || 0)) {
-          link.remoteClicks = remoteClicks;
-          changed = true;
+  try {
+    await Promise.all(
+      state.links.map(async (link) => {
+        const key = counterKeyForLink(link);
+        try {
+          const response = await fetch(`https://api.counterapi.dev/v1/${COUNTER_NAMESPACE}/${key}/`, {
+            cache: "no-store",
+          });
+          if (!response.ok) return;
+          const data = await response.json();
+          const remoteClicks = Number(data.count || 0);
+          if (remoteClicks !== Number(link.remoteClicks || 0)) {
+            link.remoteClicks = remoteClicks;
+            changed = true;
+          }
+        } catch (error) {
+          // Keep local counts when the online counter is unavailable.
         }
-      } catch (error) {
-        // Keep local counts when the online counter is unavailable.
-      }
-    }),
-  );
+      }),
+    );
+  } finally {
+    if (syncButton) {
+      syncButton.disabled = false;
+      syncButton.textContent = "Atualizar cliques";
+    }
+  }
 
   if (changed) {
     save();
     render();
+    toast("Cliques atualizados.");
   }
 }
 
@@ -500,7 +515,7 @@ function exportCsv() {
     link.medium,
     link.brand,
     link.influencer,
-    link.clicks,
+    getClickCount(link),
     link.target,
     buildUrl(link),
     buildShortUrl(link),
@@ -693,6 +708,7 @@ function bindEvents() {
   });
   $("#exportCsvBtn").addEventListener("click", exportCsv);
   $("#exportBackupBtn").addEventListener("click", exportBackup);
+  $("#syncClicksBtn").addEventListener("click", syncRemoteClicks);
   $("#importBackupBtn").addEventListener("click", () => $("#backupFileInput").click());
   $("#backupFileInput").addEventListener("change", (event) => {
     const file = event.target.files[0];
@@ -705,10 +721,11 @@ function bindEvents() {
     renderTable();
   });
 
-  $("#simulateClickBtn").addEventListener("click", () => {
+  $("#simulateClickBtn").addEventListener("click", async () => {
     const link = getSelected();
     if (!link) return;
     link.clicks += 1;
+    await recordGlobalClick(counterKeyForLink(link));
     save();
     render();
     toast("Clique registrado.");
@@ -736,7 +753,9 @@ function bindEvents() {
   window.addEventListener("beforeunload", save);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") save();
+    if (document.visibilityState === "visible") syncRemoteClicks();
   });
+  window.addEventListener("focus", syncRemoteClicks);
 }
 
 load();

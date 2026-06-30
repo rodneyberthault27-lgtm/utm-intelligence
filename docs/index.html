@@ -36,6 +36,7 @@
           <h1>Gestão e análise de UTMs</h1>
         </div>
         <div class="topbar-actions">
+          <button id="syncClicksBtn" class="ghost">Atualizar cliques</button>
           <button id="exportCsvBtn" class="ghost">Exportar CSV</button>
           <button id="exportBackupBtn" class="ghost">Backup JSON</button>
           <button id="importBackupBtn" class="ghost">Importar backup</button>
@@ -205,6 +206,7 @@
               <span>Link rastreável</span>
               <input id="shortUrl" readonly />
             </div>
+            <p class="tracking-note">Use este link rastreável ou o link curto na bio. Se usar o wa.me direto, o clique não passa pelo contador.</p>
             <div class="shortener-row">
               <label>
                 Nome do link curto
@@ -276,6 +278,6 @@
 
     <div id="toast" class="toast"></div>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="app.js?v=remote-clicks-1"></script>
+    <script src="app.js?v=remote-clicks-2"></script>
   </body>
 </html>

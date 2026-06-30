@@ -371,6 +371,13 @@ label {
   margin-bottom: 12px;
 }
 
+.tracking-note {
+  margin: -2px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .result-box span {
   color: var(--muted);
   font-size: 13px;
