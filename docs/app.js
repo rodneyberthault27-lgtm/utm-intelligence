@@ -17,6 +17,7 @@ const state = {
   links: [],
   selectedId: null,
   query: "",
+  destinationMode: "url",
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -59,6 +60,19 @@ function buildUrl(link) {
   url.searchParams.set("utm_campaign", normalize(link.campaign));
   if (link.content) url.searchParams.set("utm_content", normalize(link.content));
   if (link.influencer) url.searchParams.set("utm_term", normalize(link.influencer));
+  return url.toString();
+}
+
+function buildWhatsappUrl() {
+  const phone = $("#whatsappPhone").value.replace(/\D/g, "");
+  const message = $("#whatsappMessage").value.trim();
+
+  if (phone.length < 10) {
+    throw new Error("Informe o telefone com DDI e DDD.");
+  }
+
+  const url = new URL(`https://wa.me/${phone}`);
+  if (message) url.searchParams.set("text", message);
   return url.toString();
 }
 
@@ -247,7 +261,10 @@ function renderTable() {
           <td>${formatNumber(link.clicks)}</td>
           <td><span class="badge ${status.className}">${status.label}</span></td>
           <td>${buildShortUrl(link)}</td>
-          <td><button class="small-btn" data-action="select" data-id="${link.id}">Abrir</button></td>
+          <td class="table-actions">
+            <button class="small-btn" data-action="select" data-id="${link.id}">Abrir</button>
+            <button class="small-btn danger-btn" data-action="delete" data-id="${link.id}">Apagar</button>
+          </td>
         </tr>
       `;
     })
@@ -459,26 +476,6 @@ function importBackup(file) {
   reader.readAsText(file);
 }
 
-function useWhatsappDestination() {
-  const phone = $("#whatsappPhone").value.replace(/\D/g, "");
-  const message = $("#whatsappMessage").value.trim();
-
-  if (phone.length < 10) {
-    toast("Informe o telefone com DDI e DDD.");
-    return;
-  }
-
-  const url = new URL(`https://wa.me/${phone}`);
-  if (message) url.searchParams.set("text", message);
-
-  $("#destinationInput").value = url.toString();
-  const source = document.querySelector("[name='source']");
-  const medium = document.querySelector("[name='medium']");
-  source.value = "WhatsApp";
-  medium.value = "whatsapp";
-  toast("Destino WhatsApp pronto para rastrear.");
-}
-
 async function shortenSelectedLink() {
   const link = getSelected();
   if (!link) {
@@ -539,18 +536,59 @@ async function createShortLink(longUrl, alias) {
   return { shortUrl: data.result_url, service: "cleanuri", usedAlias: false };
 }
 
+function setDestinationMode(mode) {
+  state.destinationMode = mode;
+  const isWhatsapp = mode === "whatsapp";
+  $("#urlDestinationPanel").classList.toggle("hidden", isWhatsapp);
+  $("#whatsappDestinationPanel").classList.toggle("hidden", !isWhatsapp);
+  $("#destinationInput").required = !isWhatsapp;
+
+  document.querySelectorAll("[data-destination-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.destinationMode === mode);
+  });
+
+  if (isWhatsapp) {
+    document.querySelector("[name='source']").value = "WhatsApp";
+    document.querySelector("[name='medium']").value = "whatsapp";
+  }
+}
+
+function deleteLink(id) {
+  const link = state.links.find((item) => item.id === id);
+  if (!link) return;
+  const ok = window.confirm(`Apagar o link da campanha "${title(link.campaign)}"?`);
+  if (!ok) return;
+
+  state.links = state.links.filter((item) => item.id !== id);
+  state.selectedId = state.links[0]?.id || null;
+  save();
+  render();
+  toast("Link apagado.");
+}
+
 function bindEvents() {
   $("#utmForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+
+    let destination = form.get("destination");
+    if (state.destinationMode === "whatsapp") {
+      try {
+        destination = buildWhatsappUrl();
+      } catch (error) {
+        toast(error.message);
+        return;
+      }
+    }
+
     const link = {
       id: `lnk_${Date.now()}`,
       createdAt: today(),
-      destination: form.get("destination"),
+      destination,
       company: form.get("company"),
       brand: form.get("brand"),
-      source: form.get("source"),
-      medium: form.get("medium"),
+      source: state.destinationMode === "whatsapp" ? "WhatsApp" : form.get("source"),
+      medium: state.destinationMode === "whatsapp" ? "whatsapp" : form.get("medium"),
       campaign: normalize(form.get("campaign")),
       content: normalize(form.get("content")),
       influencer: normalize(form.get("influencer")),
@@ -567,7 +605,9 @@ function bindEvents() {
   $("#copyUrlBtn").addEventListener("click", () => copy($("#generatedUrl").value));
   $("#copyShortBtn").addEventListener("click", () => copy($("#shortUrl").value));
   $("#shortenBtn").addEventListener("click", shortenSelectedLink);
-  $("#useWhatsappBtn").addEventListener("click", useWhatsappDestination);
+  document.querySelectorAll("[data-destination-mode]").forEach((button) => {
+    button.addEventListener("click", () => setDestinationMode(button.dataset.destinationMode));
+  });
   $("#exportCsvBtn").addEventListener("click", exportCsv);
   $("#exportBackupBtn").addEventListener("click", exportBackup);
   $("#importBackupBtn").addEventListener("click", () => $("#backupFileInput").click());
@@ -592,8 +632,12 @@ function bindEvents() {
   });
 
   $("#linksTable").addEventListener("click", (event) => {
-    const button = event.target.closest("button[data-action='select']");
+    const button = event.target.closest("button[data-action]");
     if (!button) return;
+    if (button.dataset.action === "delete") {
+      deleteLink(button.dataset.id);
+      return;
+    }
     state.selectedId = button.dataset.id;
     renderPreview();
     document.querySelector("#generator").scrollIntoView({ behavior: "smooth" });

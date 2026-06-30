@@ -287,6 +287,31 @@ label {
   gap: 14px;
 }
 
+.destination-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 6px;
+  padding: 5px;
+  background: #ebe7dd;
+  border-radius: 8px;
+}
+
+.destination-tab {
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.destination-tab.active {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgba(24, 34, 31, 0.08);
+}
+
+.destination-panel.hidden {
+  display: none;
+}
+
 .whatsapp-builder {
   display: grid;
   gap: 12px;
@@ -494,6 +519,18 @@ td {
   padding: 8px 10px;
   border: 1px solid var(--line);
   background: #fff;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.danger-btn {
+  color: #842f25;
+  border-color: #ecc6bf;
+  background: #fff7f5;
 }
 
 .toast {

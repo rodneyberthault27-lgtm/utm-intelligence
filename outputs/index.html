@@ -102,15 +102,22 @@
               </div>
             </div>
 
-            <label>
-              URL de destino
-              <input id="destinationInput" name="destination" type="url" placeholder="https://suaempresa.com/produto" required />
-            </label>
+            <div class="destination-tabs" role="group" aria-label="Tipo de destino">
+              <button class="destination-tab active" data-destination-mode="url" type="button">Link comum</button>
+              <button class="destination-tab" data-destination-mode="whatsapp" type="button">WhatsApp</button>
+            </div>
 
-            <div class="whatsapp-builder">
+            <div id="urlDestinationPanel" class="destination-panel">
+              <label>
+                URL de destino
+                <input id="destinationInput" name="destination" type="url" placeholder="https://suaempresa.com/produto" required />
+              </label>
+            </div>
+
+            <div id="whatsappDestinationPanel" class="whatsapp-builder destination-panel hidden">
               <div class="builder-head">
                 <strong>Destino WhatsApp</strong>
-                <span>Monte um link wa.me limpo para rastrear cliques antes de abrir a conversa.</span>
+                <span>Preencha o número, a mensagem e clique em gerar.</span>
               </div>
               <div class="whatsapp-grid">
                 <label>
@@ -121,7 +128,6 @@
                   Mensagem inicial
                   <input id="whatsappMessage" placeholder="Olá, quero saber mais sobre..." />
                 </label>
-                <button id="useWhatsappBtn" class="ghost" type="button">Usar WhatsApp</button>
               </div>
             </div>
 
@@ -268,6 +274,6 @@
 
     <div id="toast" class="toast"></div>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="app.js?v=whatsapp-1"></script>
+    <script src="app.js?v=simple-modes-1"></script>
   </body>
 </html>
