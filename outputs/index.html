@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UTM Intelligence</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">U</div>
+        <div>
+          <strong>UTM Intelligence</strong>
+          <span>Campanhas rastreáveis</span>
+        </div>
+      </div>
+      <nav>
+        <a href="#dashboard" class="active">Dashboard</a>
+        <a href="#generator">Gerador</a>
+        <a href="#links">Links</a>
+        <a href="#reports">Relatórios</a>
+      </nav>
+      <div class="workspace-card">
+        <span>Workspace</span>
+        <strong id="workspaceName">Growth Lab</strong>
+        <small id="saveStatus">Salvo automaticamente</small>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Central de campanhas digitais</p>
+          <h1>Gestão e análise de UTMs</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="exportCsvBtn" class="ghost">Exportar CSV</button>
+          <button id="exportBackupBtn" class="ghost">Backup JSON</button>
+          <button id="importBackupBtn" class="ghost">Importar backup</button>
+          <input id="backupFileInput" type="file" accept="application/json" hidden />
+        </div>
+      </header>
+
+      <section id="dashboard" class="section">
+        <div class="metrics-grid">
+          <article class="metric">
+            <span>Cliques totais</span>
+            <strong id="totalClicks">0</strong>
+            <small id="clickTrend">+0% vs período anterior</small>
+          </article>
+          <article class="metric">
+            <span>Links ativos</span>
+            <strong id="activeLinks">0</strong>
+            <small>com UTMs padronizadas</small>
+          </article>
+          <article class="metric">
+            <span>Melhor canal</span>
+            <strong id="bestChannel">-</strong>
+            <small id="bestChannelClicks">0 cliques</small>
+          </article>
+          <article class="metric">
+            <span>Top influenciador</span>
+            <strong id="bestInfluencer">-</strong>
+            <small id="bestInfluencerClicks">0 cliques</small>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="panel performance-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Performance por canal</h2>
+                <p>Compare rapidamente quais fontes estão puxando tráfego.</p>
+              </div>
+              <select id="channelFilter">
+                <option value="all">Todos os canais</option>
+              </select>
+            </div>
+            <div id="channelBars" class="bar-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Ranking de links</h2>
+                <p>URLs com maior volume de cliques.</p>
+              </div>
+            </div>
+            <div id="rankingList" class="ranking-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="generator" class="section">
+        <div class="split">
+          <form id="utmForm" class="panel form-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Novo link rastreável</h2>
+                <p>Campos são normalizados automaticamente para manter padrão.</p>
+              </div>
+            </div>
+
+            <label>
+              URL de destino
+              <input name="destination" type="url" placeholder="https://suaempresa.com/produto" required />
+            </label>
+
+            <div class="form-grid">
+              <label>
+                Empresa
+                <input name="company" placeholder="Ex: ACME" required />
+              </label>
+              <label>
+                Marca/produto
+                <input name="brand" placeholder="Ex: Curso Premium" required />
+              </label>
+              <label>
+                Canal
+                <select name="source" required>
+                  <option>Instagram</option>
+                  <option>Facebook</option>
+                  <option>LinkedIn</option>
+                  <option>TikTok</option>
+                  <option>Google Ads</option>
+                  <option>WhatsApp</option>
+                  <option>E-mail Marketing</option>
+                  <option>Influenciadores</option>
+                  <option>Campanha Interna</option>
+                </select>
+              </label>
+              <label>
+                Mídia
+                <select name="medium" required>
+                  <option>social</option>
+                  <option>cpc</option>
+                  <option>email</option>
+                  <option>referral</option>
+                  <option>whatsapp</option>
+                  <option>qr_code</option>
+                </select>
+              </label>
+              <label>
+                Campanha
+                <input name="campaign" placeholder="Ex: Black Friday 2026" required />
+              </label>
+              <label>
+                Conteúdo/Ação
+                <input name="content" placeholder="Ex: story_01, bio, banner" />
+              </label>
+              <label>
+                Influenciador
+                <input name="influencer" placeholder="Ex: maria_silva" />
+              </label>
+              <label>
+                Meta de cliques
+                <input name="target" type="number" min="1" value="500" />
+              </label>
+            </div>
+
+            <button type="submit" class="primary">Gerar link UTM</button>
+          </form>
+
+          <section class="panel preview-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Link gerado</h2>
+                <p>Pronto para copiar, encurtar e compartilhar.</p>
+              </div>
+            </div>
+            <div class="qr-wrap">
+              <canvas id="qrCanvas" width="180" height="180"></canvas>
+            </div>
+            <div class="result-box">
+              <span>URL completa</span>
+              <textarea id="generatedUrl" readonly></textarea>
+            </div>
+            <div class="result-box">
+              <span>Link curto</span>
+              <input id="shortUrl" readonly />
+            </div>
+            <div class="button-row">
+              <button id="copyUrlBtn" class="ghost" type="button">Copiar URL</button>
+              <button id="copyShortBtn" class="ghost" type="button">Copiar curto</button>
+              <button id="simulateClickBtn" class="ghost" type="button">Simular clique</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="links" class="section">
+        <section class="panel">
+          <div class="panel-head table-head">
+            <div>
+              <h2>Biblioteca de links</h2>
+              <p>Histórico pesquisável dos links cadastrados por você.</p>
+            </div>
+            <input id="searchInput" class="search" placeholder="Buscar links..." />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Campanha</th>
+                  <th>Canal</th>
+                  <th>Influenciador</th>
+                  <th>Cliques</th>
+                  <th>Status</th>
+                  <th>Link curto</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="linksTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="reports" class="section">
+        <div class="report-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Alertas de performance</h2>
+                <p>Campanhas acima ou abaixo da meta esperada.</p>
+              </div>
+            </div>
+            <div id="alertsList" class="alerts-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Mapa de origem</h2>
+                <p>Resumo para decisão estratégica.</p>
+              </div>
+            </div>
+            <div id="originMap" class="origin-map"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
