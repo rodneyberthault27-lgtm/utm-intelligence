@@ -1,5 +1,6 @@
 const STORAGE_KEY = "utm_intelligence_links_v1";
 const PUBLIC_APP_URL = "https://rodneyberthault27-lgtm.github.io/utm-intelligence/";
+const COUNTER_NAMESPACE = "utm-intelligence-rodneyberthault27";
 
 const channels = [
   "Instagram",
@@ -53,6 +54,14 @@ function shortCode(text) {
   return Math.abs(hash).toString(36).slice(0, 7).padStart(5, "0");
 }
 
+function counterKeyForLink(link) {
+  return normalize(link.counterKey || link.id || link.campaign || "link");
+}
+
+function getClickCount(link) {
+  return Math.max(Number(link.clicks || 0), Number(link.remoteClicks || 0));
+}
+
 function getAppBaseUrl() {
   if (!window.location.protocol.startsWith("http")) return PUBLIC_APP_URL;
 
@@ -95,6 +104,7 @@ function buildTrackingUrl(link) {
   const url = new URL(getAppBaseUrl());
   url.searchParams.set("go", buildUrl(link));
   url.searchParams.set("id", link.id);
+  url.searchParams.set("k", counterKeyForLink(link));
   url.searchParams.set("c", shortCode(link.id + buildUrl(link)));
   return url.toString();
 }
@@ -104,6 +114,7 @@ function buildCustomTrackingUrl(link, alias) {
   const url = new URL(`${baseUrl}${alias}/`);
   url.searchParams.set("go", buildUrl(link));
   url.searchParams.set("id", link.id);
+  url.searchParams.set("k", counterKeyForLink(link));
   url.searchParams.set("c", shortCode(alias + link.id + buildUrl(link)));
   return url.toString();
 }
@@ -112,7 +123,7 @@ function buildShortUrl(link) {
   return link.shortUrl || buildTrackingUrl(link);
 }
 
-function handleIncomingRedirect() {
+async function handleIncomingRedirect() {
   const params = new URLSearchParams(window.location.search);
   const target = params.get("go");
   if (!target) return false;
@@ -122,16 +133,30 @@ function handleIncomingRedirect() {
     if (!["http:", "https:"].includes(redirectUrl.protocol)) return false;
 
     const linkId = params.get("id");
+    const counterKey = normalize(params.get("k") || linkId || "unknown");
     const link = state.links.find((item) => item.id === linkId);
     if (link) {
       link.clicks += 1;
       save();
     }
 
+    await recordGlobalClick(counterKey);
     window.location.replace(redirectUrl.toString());
     return true;
   } catch (error) {
     return false;
+  }
+}
+
+async function recordGlobalClick(counterKey) {
+  const url = `https://api.counterapi.dev/v1/${COUNTER_NAMESPACE}/${counterKey}/up`;
+  try {
+    await Promise.race([
+      fetch(url, { cache: "no-store", keepalive: true }),
+      new Promise((resolve) => setTimeout(resolve, 900)),
+    ]);
+  } catch (error) {
+    // Redirect must continue even if the external counter is unavailable.
   }
 }
 
@@ -169,7 +194,7 @@ function updateSaveStatus(savedAt) {
 function groupBy(key) {
   return state.links.reduce((acc, item) => {
     const group = item[key] || "Sem identificação";
-    acc[group] = (acc[group] || 0) + Number(item.clicks || 0);
+    acc[group] = (acc[group] || 0) + getClickCount(item);
     return acc;
   }, {});
 }
@@ -179,20 +204,20 @@ function getSelected() {
 }
 
 function performanceStatus(link) {
-  const ratio = Number(link.clicks || 0) / Math.max(Number(link.target || 1), 1);
+  const ratio = getClickCount(link) / Math.max(Number(link.target || 1), 1);
   if (ratio >= 1.1) return { label: "Acima da meta", className: "good" };
   if (ratio >= 0.75) return { label: "Em atenção", className: "warn" };
   return { label: "Abaixo da meta", className: "risk" };
 }
 
 function renderMetrics() {
-  const total = state.links.reduce((sum, link) => sum + Number(link.clicks || 0), 0);
+  const total = state.links.reduce((sum, link) => sum + getClickCount(link), 0);
   const active = state.links.length;
   const byChannel = groupBy("source");
   const bestChannel = Object.entries(byChannel).sort((a, b) => b[1] - a[1])[0] || ["-", 0];
   const influencers = state.links.filter((link) => link.influencer);
   const byInfluencer = influencers.reduce((acc, link) => {
-    acc[link.influencer] = (acc[link.influencer] || 0) + Number(link.clicks || 0);
+    acc[link.influencer] = (acc[link.influencer] || 0) + getClickCount(link);
     return acc;
   }, {});
   const bestInfluencer = Object.entries(byInfluencer).sort((a, b) => b[1] - a[1])[0] || ["-", 0];
@@ -243,7 +268,7 @@ function renderBars() {
 }
 
 function renderRanking() {
-  const top = [...state.links].sort((a, b) => b.clicks - a.clicks).slice(0, 5);
+  const top = [...state.links].sort((a, b) => getClickCount(b) - getClickCount(a)).slice(0, 5);
   if (!top.length) {
     $("#rankingList").innerHTML = `<div class="empty-state">Nenhum link cadastrado ainda.</div>`;
     return;
@@ -253,7 +278,7 @@ function renderRanking() {
       (link, index) => `
       <div class="rank-item">
         <strong>${index + 1}. ${title(link.campaign)}</strong>
-        <span class="rank-meta">${link.source} · ${link.brand} · ${formatNumber(link.clicks)} cliques</span>
+        <span class="rank-meta">${link.source} · ${link.brand} · ${formatNumber(getClickCount(link))} cliques</span>
       </div>
     `,
     )
@@ -279,7 +304,7 @@ function renderTable() {
           <td><strong>${title(link.campaign)}</strong><br><span class="rank-meta">${link.brand}</span></td>
           <td>${link.source}</td>
           <td>${link.influencer ? title(link.influencer) : "-"}</td>
-          <td>${formatNumber(link.clicks)}</td>
+          <td>${formatNumber(getClickCount(link))}</td>
           <td><span class="badge ${status.className}">${status.label}</span></td>
           <td>${buildShortUrl(link)}</td>
           <td class="table-actions">
@@ -294,7 +319,7 @@ function renderTable() {
 
 function renderAlerts() {
   const alerts = [...state.links]
-    .sort((a, b) => b.clicks / b.target - a.clicks / a.target)
+    .sort((a, b) => getClickCount(b) / b.target - getClickCount(a) / a.target)
     .slice(0, 6);
   if (!alerts.length) {
     $("#alertsList").innerHTML = `<div class="empty-state">Os alertas aparecerão quando houver links com metas cadastradas.</div>`;
@@ -302,12 +327,12 @@ function renderAlerts() {
   }
   $("#alertsList").innerHTML = alerts
     .map((link) => {
-      const ratio = Math.round((link.clicks / Math.max(link.target, 1)) * 100);
+      const ratio = Math.round((getClickCount(link) / Math.max(link.target, 1)) * 100);
       const status = performanceStatus(link);
       return `
         <div class="alert-item">
           <strong>${title(link.campaign)} · ${link.source}</strong>
-          <span>${ratio}% da meta (${formatNumber(link.clicks)} de ${formatNumber(link.target)} cliques)</span>
+          <span>${ratio}% da meta (${formatNumber(getClickCount(link))} de ${formatNumber(link.target)} cliques)</span>
           <span class="badge ${status.className}">${status.label}</span>
         </div>
       `;
@@ -333,8 +358,8 @@ function renderOriginMap() {
   const campaignCount = new Set(state.links.map((link) => link.campaign)).size;
   const influencerClicks = state.links
     .filter((link) => link.influencer)
-    .reduce((sum, link) => sum + Number(link.clicks || 0), 0);
-  const total = state.links.reduce((sum, link) => sum + Number(link.clicks || 0), 0);
+    .reduce((sum, link) => sum + getClickCount(link), 0);
+  const total = state.links.reduce((sum, link) => sum + getClickCount(link), 0);
   const influencerShare = total ? Math.round((influencerClicks / total) * 100) : 0;
 
   $("#originMap").innerHTML = `
@@ -424,6 +449,36 @@ function render() {
   renderAlerts();
   renderOriginMap();
   renderPreview();
+}
+
+async function syncRemoteClicks() {
+  if (!state.links.length) return;
+
+  let changed = false;
+  await Promise.all(
+    state.links.map(async (link) => {
+      const key = counterKeyForLink(link);
+      try {
+        const response = await fetch(`https://api.counterapi.dev/v1/${COUNTER_NAMESPACE}/${key}/`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const remoteClicks = Number(data.count || 0);
+        if (remoteClicks !== Number(link.remoteClicks || 0)) {
+          link.remoteClicks = remoteClicks;
+          changed = true;
+        }
+      } catch (error) {
+        // Keep local counts when the online counter is unavailable.
+      }
+    }),
+  );
+
+  if (changed) {
+    save();
+    render();
+  }
 }
 
 function toast(message) {
@@ -685,7 +740,9 @@ function bindEvents() {
 }
 
 load();
-if (!handleIncomingRedirect()) {
+handleIncomingRedirect().then((didRedirect) => {
+  if (didRedirect) return;
   bindEvents();
   render();
-}
+  syncRemoteClicks();
+});
