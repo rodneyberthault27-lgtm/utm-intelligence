@@ -482,7 +482,7 @@ async function shortenSelectedLink() {
     link.shortService = data.service;
     save();
     render();
-    toast(data.usedAlias ? "Link curto criado com o nome escolhido." : "Link curto automatico criado.");
+    toast(data.usedAlias ? "Link curto direto criado com o nome escolhido." : "Link curto direto criado automaticamente.");
   } catch (error) {
     toast("Nao foi possivel encurtar agora. Tente outro nome.");
   } finally {
@@ -504,17 +504,19 @@ async function createShortLink(longUrl, alias) {
       return { shortUrl: data.shorturl, service: "is.gd", usedAlias: true };
     }
   } catch (error) {
-    // Try the automatic fallback below.
+    // Try the direct automatic fallback below.
   }
 
-  const tinyUrl = new URL("https://tinyurl.com/api-create.php");
-  tinyUrl.searchParams.set("url", longUrl);
-  const response = await fetch(tinyUrl.toString());
-  const text = await response.text();
-  if (!response.ok || !text.startsWith("https://")) {
+  const response = await fetch("https://cleanuri.com/api/v1/shorten", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ url: longUrl }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.result_url) {
     throw new Error("Shortener failed.");
   }
-  return { shortUrl: text.trim(), service: "tinyurl", usedAlias: false };
+  return { shortUrl: data.result_url, service: "cleanuri", usedAlias: false };
 }
 
 function bindEvents() {
