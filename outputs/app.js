@@ -373,7 +373,7 @@ function renderPreview() {
   const fullUrl = buildUrl(link);
   $("#generatedUrl").value = fullUrl;
   $("#shortUrl").value = buildShortUrl(link);
-  $("#customSlug").value = link.shortAlias || normalize(link.campaign).replaceAll("_", "-");
+  $("#customSlug").value = link.shortAlias || normalize(link.campaign);
   drawQr(buildShortUrl(link));
 }
 
@@ -466,9 +466,9 @@ async function shortenSelectedLink() {
     return;
   }
 
-  const alias = normalize($("#customSlug").value).replaceAll("_", "-");
+  const alias = normalize($("#customSlug").value);
   if (!alias || alias.length < 4) {
-    toast("Use um nome curto com pelo menos 4 caracteres.");
+    toast("Use letras, numeros e _ com pelo menos 4 caracteres.");
     return;
   }
 
@@ -476,28 +476,45 @@ async function shortenSelectedLink() {
   $("#shortenBtn").textContent = "Encurtando...";
 
   try {
-    const apiUrl = new URL("https://is.gd/create.php");
-    apiUrl.searchParams.set("format", "json");
-    apiUrl.searchParams.set("url", buildTrackingUrl(link));
-    apiUrl.searchParams.set("shorturl", alias);
-
-    const response = await fetch(apiUrl.toString());
-    const data = await response.json();
-    if (!response.ok || !data.shorturl) {
-      throw new Error(data.errormessage || "Nao foi possivel encurtar.");
-    }
-
+    const data = await createShortLink(buildTrackingUrl(link), alias);
     link.shortAlias = alias;
-    link.shortUrl = data.shorturl;
+    link.shortUrl = data.shortUrl;
+    link.shortService = data.service;
     save();
     render();
-    toast("Link curto criado com o nome escolhido.");
+    toast(data.usedAlias ? "Link curto criado com o nome escolhido." : "Link curto automatico criado.");
   } catch (error) {
-    toast("Nome indisponivel ou encurtador fora do ar.");
+    toast("Nao foi possivel encurtar agora. Tente outro nome.");
   } finally {
     $("#shortenBtn").disabled = false;
     $("#shortenBtn").textContent = "Encurtar";
   }
+}
+
+async function createShortLink(longUrl, alias) {
+  try {
+    const isGdUrl = new URL("https://is.gd/create.php");
+    isGdUrl.searchParams.set("format", "json");
+    isGdUrl.searchParams.set("url", longUrl);
+    isGdUrl.searchParams.set("shorturl", alias);
+
+    const response = await fetch(isGdUrl.toString());
+    const data = await response.json();
+    if (response.ok && data.shorturl) {
+      return { shortUrl: data.shorturl, service: "is.gd", usedAlias: true };
+    }
+  } catch (error) {
+    // Try the automatic fallback below.
+  }
+
+  const tinyUrl = new URL("https://tinyurl.com/api-create.php");
+  tinyUrl.searchParams.set("url", longUrl);
+  const response = await fetch(tinyUrl.toString());
+  const text = await response.text();
+  if (!response.ok || !text.startsWith("https://")) {
+    throw new Error("Shortener failed.");
+  }
+  return { shortUrl: text.trim(), service: "tinyurl", usedAlias: false };
 }
 
 function bindEvents() {
