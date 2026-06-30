@@ -55,6 +55,9 @@ function shortCode(text) {
 
 function buildUrl(link) {
   const url = new URL(link.destination);
+  if (link.destinationType === "whatsapp") {
+    return url.toString();
+  }
   url.searchParams.set("utm_source", normalize(link.source));
   url.searchParams.set("utm_medium", normalize(link.medium));
   url.searchParams.set("utm_campaign", normalize(link.campaign));
@@ -587,8 +590,9 @@ function bindEvents() {
       destination,
       company: form.get("company"),
       brand: form.get("brand"),
-      source: state.destinationMode === "whatsapp" ? "WhatsApp" : form.get("source"),
-      medium: state.destinationMode === "whatsapp" ? "whatsapp" : form.get("medium"),
+      destinationType: state.destinationMode,
+      source: form.get("source"),
+      medium: form.get("medium"),
       campaign: normalize(form.get("campaign")),
       content: normalize(form.get("content")),
       influencer: normalize(form.get("influencer")),
