@@ -528,6 +528,40 @@ async function shortenSelectedLink() {
   }
 }
 
+async function createBioShortLink() {
+  const link = getSelected();
+  if (!link) {
+    toast("Crie um link antes de encurtar.");
+    return;
+  }
+
+  $("#bioShortenBtn").disabled = true;
+  $("#bioShortenBtn").textContent = "Encurtando...";
+
+  try {
+    const apiUrl = new URL("https://da.gd/s");
+    apiUrl.searchParams.set("url", buildTrackingUrl(link));
+    const response = await fetch(apiUrl.toString());
+    const text = (await response.text()).trim();
+
+    if (!response.ok || !text.startsWith("https://")) {
+      throw new Error("Shortener failed.");
+    }
+
+    link.shortUrl = text;
+    link.shortAlias = link.shortAlias || normalize(link.campaign);
+    link.shortService = "da.gd";
+    save();
+    render();
+    toast("Link curto para bio criado.");
+  } catch (error) {
+    toast("Nao foi possivel encurtar para bio agora.");
+  } finally {
+    $("#bioShortenBtn").disabled = false;
+    $("#bioShortenBtn").textContent = "Encurtar para bio";
+  }
+}
+
 function setDestinationMode(mode) {
   state.destinationMode = mode;
   const isWhatsapp = mode === "whatsapp";
@@ -598,6 +632,7 @@ function bindEvents() {
   $("#copyUrlBtn").addEventListener("click", () => copy($("#generatedUrl").value));
   $("#copyShortBtn").addEventListener("click", () => copy($("#shortUrl").value));
   $("#shortenBtn").addEventListener("click", shortenSelectedLink);
+  $("#bioShortenBtn").addEventListener("click", createBioShortLink);
   document.querySelectorAll("[data-destination-mode]").forEach((button) => {
     button.addEventListener("click", () => setDestinationMode(button.dataset.destinationMode));
   });
