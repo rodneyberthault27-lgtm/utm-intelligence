@@ -180,6 +180,13 @@
               <span>Link rastreável</span>
               <input id="shortUrl" readonly />
             </div>
+            <div class="shortener-row">
+              <label>
+                Nome do link curto
+                <input id="customSlug" placeholder="Ex: black-friday-acme" />
+              </label>
+              <button id="shortenBtn" class="ghost" type="button">Encurtar</button>
+            </div>
             <div class="button-row">
               <button id="copyUrlBtn" class="ghost" type="button">Copiar URL</button>
               <button id="copyShortBtn" class="ghost" type="button">Copiar rastreável</button>
@@ -243,6 +250,6 @@
 
     <div id="toast" class="toast"></div>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="app.js?v=2a6a4ca"></script>
+    <script src="app.js?v=shortener-1"></script>
   </body>
 </html>

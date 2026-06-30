@@ -62,7 +62,7 @@ function buildUrl(link) {
   return url.toString();
 }
 
-function buildShortUrl(link) {
+function buildTrackingUrl(link) {
   const baseUrl = window.location.protocol.startsWith("http")
     ? `${window.location.origin}${window.location.pathname}`
     : PUBLIC_APP_URL;
@@ -71,6 +71,10 @@ function buildShortUrl(link) {
   url.searchParams.set("id", link.id);
   url.searchParams.set("c", shortCode(link.id + buildUrl(link)));
   return url.toString();
+}
+
+function buildShortUrl(link) {
+  return link.shortUrl || buildTrackingUrl(link);
 }
 
 function handleIncomingRedirect() {
@@ -362,12 +366,14 @@ function renderPreview() {
   if (!link) {
     $("#generatedUrl").value = "";
     $("#shortUrl").value = "";
+    $("#customSlug").value = "";
     drawQr("utm-intelligence-empty");
     return;
   }
   const fullUrl = buildUrl(link);
   $("#generatedUrl").value = fullUrl;
   $("#shortUrl").value = buildShortUrl(link);
+  $("#customSlug").value = link.shortAlias || normalize(link.campaign).replaceAll("_", "-");
   drawQr(buildShortUrl(link));
 }
 
@@ -453,6 +459,47 @@ function importBackup(file) {
   reader.readAsText(file);
 }
 
+async function shortenSelectedLink() {
+  const link = getSelected();
+  if (!link) {
+    toast("Crie um link antes de encurtar.");
+    return;
+  }
+
+  const alias = normalize($("#customSlug").value).replaceAll("_", "-");
+  if (!alias || alias.length < 4) {
+    toast("Use um nome curto com pelo menos 4 caracteres.");
+    return;
+  }
+
+  $("#shortenBtn").disabled = true;
+  $("#shortenBtn").textContent = "Encurtando...";
+
+  try {
+    const apiUrl = new URL("https://is.gd/create.php");
+    apiUrl.searchParams.set("format", "json");
+    apiUrl.searchParams.set("url", buildTrackingUrl(link));
+    apiUrl.searchParams.set("shorturl", alias);
+
+    const response = await fetch(apiUrl.toString());
+    const data = await response.json();
+    if (!response.ok || !data.shorturl) {
+      throw new Error(data.errormessage || "Nao foi possivel encurtar.");
+    }
+
+    link.shortAlias = alias;
+    link.shortUrl = data.shorturl;
+    save();
+    render();
+    toast("Link curto criado com o nome escolhido.");
+  } catch (error) {
+    toast("Nome indisponivel ou encurtador fora do ar.");
+  } finally {
+    $("#shortenBtn").disabled = false;
+    $("#shortenBtn").textContent = "Encurtar";
+  }
+}
+
 function bindEvents() {
   $("#utmForm").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -480,6 +527,7 @@ function bindEvents() {
 
   $("#copyUrlBtn").addEventListener("click", () => copy($("#generatedUrl").value));
   $("#copyShortBtn").addEventListener("click", () => copy($("#shortUrl").value));
+  $("#shortenBtn").addEventListener("click", shortenSelectedLink);
   $("#exportCsvBtn").addEventListener("click", exportCsv);
   $("#exportBackupBtn").addEventListener("click", exportBackup);
   $("#importBackupBtn").addEventListener("click", () => $("#backupFileInput").click());
