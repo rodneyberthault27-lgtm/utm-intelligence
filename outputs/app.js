@@ -53,6 +53,18 @@ function shortCode(text) {
   return Math.abs(hash).toString(36).slice(0, 7).padStart(5, "0");
 }
 
+function getAppBaseUrl() {
+  if (!window.location.protocol.startsWith("http")) return PUBLIC_APP_URL;
+
+  const marker = "/utm-intelligence/";
+  const index = window.location.pathname.indexOf(marker);
+  if (index >= 0) {
+    return `${window.location.origin}${window.location.pathname.slice(0, index + marker.length)}`;
+  }
+
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
 function buildUrl(link) {
   const url = new URL(link.destination);
   if (link.destinationType === "whatsapp") {
@@ -80,13 +92,19 @@ function buildWhatsappUrl() {
 }
 
 function buildTrackingUrl(link) {
-  const baseUrl = window.location.protocol.startsWith("http")
-    ? `${window.location.origin}${window.location.pathname}`
-    : PUBLIC_APP_URL;
-  const url = new URL(baseUrl);
+  const url = new URL(getAppBaseUrl());
   url.searchParams.set("go", buildUrl(link));
   url.searchParams.set("id", link.id);
   url.searchParams.set("c", shortCode(link.id + buildUrl(link)));
+  return url.toString();
+}
+
+function buildCustomTrackingUrl(link, alias) {
+  const baseUrl = getAppBaseUrl();
+  const url = new URL(`${baseUrl}${alias}/`);
+  url.searchParams.set("go", buildUrl(link));
+  url.searchParams.set("id", link.id);
+  url.searchParams.set("c", shortCode(alias + link.id + buildUrl(link)));
   return url.toString();
 }
 
@@ -493,50 +511,21 @@ async function shortenSelectedLink() {
   }
 
   $("#shortenBtn").disabled = true;
-  $("#shortenBtn").textContent = "Encurtando...";
+  $("#shortenBtn").textContent = "Criando...";
 
   try {
-    const data = await createShortLink(buildTrackingUrl(link), alias);
     link.shortAlias = alias;
-    link.shortUrl = data.shortUrl;
-    link.shortService = data.service;
+    link.shortUrl = buildCustomTrackingUrl(link, alias);
+    link.shortService = "utm-intelligence";
     save();
     render();
-    toast(data.usedAlias ? "Link curto direto criado com o nome escolhido." : "Link curto direto criado automaticamente.");
+    toast("Link personalizado criado.");
   } catch (error) {
-    toast("Nao foi possivel encurtar agora. Tente outro nome.");
+    toast("Nao foi possivel criar o link personalizado.");
   } finally {
     $("#shortenBtn").disabled = false;
-    $("#shortenBtn").textContent = "Encurtar";
+    $("#shortenBtn").textContent = "Criar personalizado";
   }
-}
-
-async function createShortLink(longUrl, alias) {
-  try {
-    const isGdUrl = new URL("https://is.gd/create.php");
-    isGdUrl.searchParams.set("format", "json");
-    isGdUrl.searchParams.set("url", longUrl);
-    isGdUrl.searchParams.set("shorturl", alias);
-
-    const response = await fetch(isGdUrl.toString());
-    const data = await response.json();
-    if (response.ok && data.shorturl) {
-      return { shortUrl: data.shorturl, service: "is.gd", usedAlias: true };
-    }
-  } catch (error) {
-    // Try the direct automatic fallback below.
-  }
-
-  const response = await fetch("https://cleanuri.com/api/v1/shorten", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ url: longUrl }),
-  });
-  const data = await response.json();
-  if (!response.ok || !data.result_url) {
-    throw new Error("Shortener failed.");
-  }
-  return { shortUrl: data.result_url, service: "cleanuri", usedAlias: false };
 }
 
 function setDestinationMode(mode) {
