@@ -1,4 +1,5 @@
 const STORAGE_KEY = "utm_intelligence_links_v1";
+const PUBLIC_APP_URL = "https://rodneyberthault27-lgtm.github.io/utm-intelligence/";
 
 const channels = [
   "Instagram",
@@ -62,7 +63,37 @@ function buildUrl(link) {
 }
 
 function buildShortUrl(link) {
-  return `https://utm.int/${shortCode(link.id + buildUrl(link))}`;
+  const baseUrl = window.location.protocol.startsWith("http")
+    ? `${window.location.origin}${window.location.pathname}`
+    : PUBLIC_APP_URL;
+  const url = new URL(baseUrl);
+  url.searchParams.set("go", buildUrl(link));
+  url.searchParams.set("id", link.id);
+  url.searchParams.set("c", shortCode(link.id + buildUrl(link)));
+  return url.toString();
+}
+
+function handleIncomingRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const target = params.get("go");
+  if (!target) return false;
+
+  try {
+    const redirectUrl = new URL(target);
+    if (!["http:", "https:"].includes(redirectUrl.protocol)) return false;
+
+    const linkId = params.get("id");
+    const link = state.links.find((item) => item.id === linkId);
+    if (link) {
+      link.clicks += 1;
+      save();
+    }
+
+    window.location.replace(redirectUrl.toString());
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 function save() {
@@ -363,7 +394,7 @@ function copy(value) {
 }
 
 function exportCsv() {
-  const headers = ["campanha", "canal", "midia", "marca", "influenciador", "cliques", "meta", "url", "link_curto"];
+  const headers = ["campanha", "canal", "midia", "marca", "influenciador", "cliques", "meta", "url", "link_rastreavel"];
   const rows = state.links.map((link) => [
     link.campaign,
     link.source,
@@ -494,5 +525,7 @@ function bindEvents() {
 }
 
 load();
-bindEvents();
-render();
+if (!handleIncomingRedirect()) {
+  bindEvents();
+  render();
+}
